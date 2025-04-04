@@ -1,8 +1,10 @@
 using api.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/storage")]
 public class StorageController : ControllerBase

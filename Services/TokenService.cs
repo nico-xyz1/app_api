@@ -3,7 +3,6 @@ using System.Security.Claims;
 using System.Text;
 using api.Interfaces;
 using api.Models;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.IdentityModel.Tokens;
 
 namespace api.Services;
@@ -16,7 +15,8 @@ public class TokenService : ITokenService
     public TokenService(IConfiguration configuration)
     {
         _configuration = configuration;
-        _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:SigningKey"]));
+        var signingKey = Environment.GetEnvironmentVariable("JWT_SIGNING_KEY");
+        _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
     }
     
     public string CreateToken(AppUser user)
@@ -26,7 +26,12 @@ public class TokenService : ITokenService
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.GivenName, user.UserName)
         };
-        var creds = new SigningCredentials(_key, SecurityAlgorithms.HmacSha512);
+        var creds = new SigningCredentials(_key, SecurityAlgorithms.HmacSha256);
+        
+        var issuer = _configuration["JWT:Issuer"]
+            .Replace("%ADDRESS%", Environment.GetEnvironmentVariable("ADDRESS"));
+        var audience = _configuration["JWT:Audience"]
+            .Replace("%ADDRESS%", Environment.GetEnvironmentVariable("ADDRESS"));
         
         // Create token
         var tokenDescriptor = new SecurityTokenDescriptor
@@ -34,8 +39,8 @@ public class TokenService : ITokenService
             Subject = new ClaimsIdentity(claims),
             Expires = DateTime.Now.AddDays(7),
             SigningCredentials = creds,
-            Issuer = _configuration["JWT:Issuer"],
-            Audience = _configuration["JWT:Audience"]
+            Issuer = issuer,
+            Audience = audience
         };
         var tokenHandler = new JwtSecurityTokenHandler();
         var token = tokenHandler.CreateToken(tokenDescriptor);
